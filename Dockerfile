@@ -99,10 +99,6 @@ VOLUME /etc/letsencrypt
 
 # Clone repo and set up AzuraCast repo
 WORKDIR /var/azuracast/www
-
-RUN git clone --shallow-since=2018-11-15 https://github.com/AzuraCast/AzuraCast.git . \
-    && composer install -o --no-dev
-
 VOLUME /var/azuracast/www
 
 #

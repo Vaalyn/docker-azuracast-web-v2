@@ -7,4 +7,4 @@ if [ `whoami` != 'azuracast' ]; then
 fi
 
 cd /var/azuracast/www
-php util/cli.php "$@"
+php bin/azuracast.php "$@"

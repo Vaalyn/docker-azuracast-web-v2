@@ -21,14 +21,6 @@ while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do case $1 in
 esac; shift; done
 if [[ "$1" == '--' ]]; then shift; fi
 
-cd /var/azuracast/www
-
-if [ ! -d .git ]; then
-    echo "Could not update; filesystem is not up to date."
-    echo "Try running './docker.sh update-self' first!"
-    exit
-fi
-
 if [ $update_mode = 1 ]; then
     echo "Updating AzuraCast..."
 else
@@ -40,31 +32,14 @@ echo "(Environment: $APPLICATION_ENV)"
 
 if [ $APPLICATION_ENV = "production" ]; then
     if [ $release_update = 1 ]; then
-        current_hash=$(git rev-parse HEAD)
-        current_tag=$(git describe --abbrev=0 --tags)
-
-        git fetch --tags
-        latest_tag=$(git describe --abbrev=0 --tags)
-
-        git reset --hard
-
-        if [ $current_tag = $latest_tag ]; then 
-            echo "You are already on the latest version (${current_tag})!"
-        else
-            echo "Updating codebase from ${current_tag} to ${latest_tag}..."
-            
-            git pull
-            git reset --hard $latest_tag
-        fi
+        composer_version="^0.9.3"
     else
-        echo "Updating to the latest rolling-release version..."
-        echo "Tip: use the '--release' flag to update to tagged releases only."
-
-        git reset --hard
-        git pull
+        composer_version="dev-master"
     fi
 
-    composer install -o --no-dev
+    composer create-project azuracast/azuracast /var/azuracast/new "$composer_version" --prefer-dist --no-dev
+    rsync -a -v /var/azuracast/new /var/azuracast/www
+    rm -rf /var/azuracast/new
 else
     if [ $APPLICATION_ENV = "testing" ]; then
         sudo mkdir -p vendor
