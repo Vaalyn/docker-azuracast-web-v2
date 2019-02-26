@@ -38,7 +38,7 @@ if [ $APPLICATION_ENV = "production" ]; then
     fi
 
     composer create-project azuracast/azuracast /var/azuracast/new "$composer_version" --prefer-dist --no-dev
-    rsync -a -v /var/azuracast/new /var/azuracast/www
+    rsync -a -v -q /var/azuracast/new/ /var/azuracast/www
     rm -rf /var/azuracast/new
 else
     if [ $APPLICATION_ENV = "testing" ]; then
