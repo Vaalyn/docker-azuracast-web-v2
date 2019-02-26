@@ -10,7 +10,7 @@ RUN sed -i "s/^exit 101$/exit 0/" /usr/sbin/policy-rc.d
 # Install essential packages
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends apt-transport-https \
-        ca-certificates curl wget tar software-properties-common sudo zip unzip git tzdata \
+        ca-certificates curl wget tar software-properties-common sudo zip unzip git rsync tzdata \
         nginx nginx-common nginx-extras \
         php7.2-fpm php7.2-cli php7.2-gd \
         php7.2-curl php7.2-xml php7.2-zip php7.2-bcmath \
