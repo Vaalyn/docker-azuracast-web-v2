@@ -32,12 +32,11 @@ echo "(Environment: $APPLICATION_ENV)"
 
 if [ $APPLICATION_ENV = "production" ]; then
     if [ $release_update = 1 ]; then
-        composer_version="^0.9.3"
+        composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --prefer-dist --no-dev
     else
-        composer_version="dev-master"
+        composer create-project azuracast/azuracast /var/azuracast/new dev-master --keep-vcs --no-dev --prefer-source
     fi
-
-    composer create-project azuracast/azuracast /var/azuracast/new "$composer_version" --prefer-dist --no-dev
+    
     rsync -a -v -q /var/azuracast/new/ /var/azuracast/www
     rm -rf /var/azuracast/new
 else
