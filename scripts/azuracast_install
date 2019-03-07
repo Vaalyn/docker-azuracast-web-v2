@@ -40,8 +40,7 @@ if [ $APPLICATION_ENV = "production" ]; then
     rsync -a -v -q /var/azuracast/new/ /var/azuracast/www
     rm -rf /var/azuracast/new
 
-    composer update --lock
-    composer install --no-dev --prefer-dist
+    composer update --lock --no-dev
 else
     if [ $APPLICATION_ENV = "testing" ]; then
         sudo mkdir -p vendor
@@ -50,7 +49,6 @@ else
     fi
 
     composer update --lock
-    composer install
 fi
 
 azuracast_cli azuracast:setup ${original_args}
