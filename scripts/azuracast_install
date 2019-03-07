@@ -32,19 +32,24 @@ echo "(Environment: $APPLICATION_ENV)"
 
 if [ $APPLICATION_ENV = "production" ]; then
     if [ $release_update = 1 ]; then
-        composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --prefer-dist --no-dev
+        composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --prefer-dist --no-install
     else
-        composer create-project azuracast/azuracast /var/azuracast/new dev-master --keep-vcs --no-dev --prefer-source
+        composer create-project azuracast/azuracast /var/azuracast/new dev-master --prefer-source --keep-vcs --no-install
     fi
     
     rsync -a -v -q /var/azuracast/new/ /var/azuracast/www
     rm -rf /var/azuracast/new
+
+    composer update --lock
+    composer install --no-dev --prefer-dist
 else
     if [ $APPLICATION_ENV = "testing" ]; then
         sudo mkdir -p vendor
         sudo chmod -R 0744 vendor
         sudo chown -R azuracast:azuracast vendor
     fi
+
+    composer update --lock
     composer install
 fi
 

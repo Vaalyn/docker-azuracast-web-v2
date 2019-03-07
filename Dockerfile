@@ -84,7 +84,10 @@ COPY ./cron/ /etc/cron.d/
 USER azuracast
 
 # Add global Composer deps
-RUN composer global require hirak/prestissimo
+RUN composer global require hirak/prestissimo \
+    && composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --prefer-dist --no-dev \
+    && mv /var/azuracast/new/vendor /var/azuracast/www \
+    && rm -rf /var/azuracast/new
 
 # Alert AzuraCast that it's running in Docker mode
 RUN touch /var/azuracast/.docker
