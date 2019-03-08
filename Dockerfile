@@ -25,19 +25,28 @@ RUN adduser --home /var/azuracast --disabled-password --gecos "" azuracast \
     && chmod -R 777 /var/azuracast/www_tmp \
     && echo 'azuracast ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
 
+# Install nginx and configuration
+COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ./nginx/azuracast.conf /etc/nginx/conf.d/azuracast.conf
+
+# Generate the dhparam.pem file (takes a long time)
+RUN openssl dhparam -dsaparam -out /etc/nginx/dhparam.pem 4096
+
+# Install LetsEncrypt's certbot
+RUN add-apt-repository ppa:certbot/certbot \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends certbot 
+
+# Set certbot permissions
+RUN mkdir -p /var/www/letsencrypt /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt \
+    && chown -R azuracast:azuracast /var/www/letsencrypt /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt
+
 # Install PHP 7.2
 RUN mkdir -p /run/php
 RUN touch /run/php/php7.2-fpm.pid
 
 COPY ./php/php.ini.tmpl /etc/php/7.2/fpm/05-azuracast.ini.tmpl
 COPY ./php/phpfpmpool.conf /etc/php/7.2/fpm/pool.d/www.conf
-
-# Install composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
-
-# AzuraCast installer and update commands
-COPY scripts/ /usr/local/bin
-RUN chmod -R a+x /usr/local/bin
 
 # Install MaxMind GeoIP Lite
 RUN wget http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz \
@@ -51,22 +60,12 @@ RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSI
     && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
-# Install nginx and configuration
-COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
-COPY ./nginx/azuracast.conf /etc/nginx/conf.d/azuracast.conf
+# Install composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 
-# Install LetsEncrypt's certbot
-RUN add-apt-repository universe \
-    && add-apt-repository ppa:certbot/certbot \
-    && apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends certbot 
-
-# Set certbot permissions
-RUN mkdir -p /var/www/letsencrypt /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt \
-    && chown -R azuracast:azuracast /var/www/letsencrypt /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt
-
-# Generate the dhparam.pem file (takes a long time)
-RUN openssl dhparam -dsaparam -out /etc/nginx/dhparam.pem 4096
+# AzuraCast installer and update commands
+COPY scripts/ /usr/local/bin
+RUN chmod -R a+x /usr/local/bin
 
 # Set up first-run scripts and runit services
 COPY ./startup_scripts/ /etc/my_init.d/
@@ -84,7 +83,7 @@ COPY ./cron/ /etc/cron.d/
 USER azuracast
 
 # Add global Composer deps
-RUN composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --prefer-dist --no-dev \
+RUN composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --no-dev \
     && mv /var/azuracast/new/vendor /var/azuracast/www \
     && rm -rf /var/azuracast/new
 
