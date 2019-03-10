@@ -1,25 +1,32 @@
-FROM phusion/baseimage:0.11
+FROM golang:alpine AS jobber
 
-# Set time zone
-ENV TZ="UTC"
-RUN echo $TZ > /etc/timezone
+RUN apk add --no-cache rsync git alpine-sdk
 
-# Avoid ERROR: invoke-rc.d: policy-rc.d denied execution of start.
-RUN sed -i "s/^exit 101$/exit 0/" /usr/sbin/policy-rc.d
+WORKDIR /go/src/app
 
-# Install essential packages
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends apt-transport-https \
-        ca-certificates curl wget tar software-properties-common sudo zip unzip git rsync tzdata \
-        nginx nginx-common nginx-extras \
-        php7.2-fpm php7.2-cli php7.2-gd \
-        php7.2-curl php7.2-xml php7.2-zip php7.2-bcmath \
-        php7.2-mysqlnd php7.2-mbstring php7.2-intl php7.2-redis
+ARG JOBBER_COMMIT=2674486141de812de8b2d053f1edc54a0593dbfd
+
+RUN mkdir -p src/github.com/dshearer \
+    && cd src/github.com/dshearer \
+    && git clone https://github.com/dshearer/jobber.git \
+    && cd jobber \
+    && git reset --hard $JOBBER_COMMIT \
+    && make check \
+    && make install
+
+FROM alpine:3.9
+
+RUN apk add --no-cache ca-certificates s6 curl wget tar sudo zip unzip git rsync tzdata bash \
+    nginx openssl certbot \
+    php7 php7-fpm php7-cli \
+    php7-phar php7-tokenizer php7-iconv php7-dom php7-curl \
+    php7-mbstring php7-openssl php7-fileinfo php7-gd php7-intl \
+    php7-simplexml php7-xml php7-xmlreader php7-xmlwriter php7-json php7-redis php7-pdo \
+    php7-pdo_mysql php7-mysqlnd
 
 # Create azuracast user.
-RUN adduser --home /var/azuracast --disabled-password --gecos "" azuracast \
-    && usermod -aG docker_env azuracast \
-    && usermod -aG www-data azuracast \
+RUN adduser -h /var/azuracast -D -g "" azuracast \
+    && addgroup azuracast www-data \
     && mkdir -p /var/azuracast/www /var/azuracast/www_tmp /var/azuracast/geoip \
     && chown -R azuracast:azuracast /var/azuracast \
     && chmod -R 777 /var/azuracast/www_tmp \
@@ -29,13 +36,10 @@ RUN adduser --home /var/azuracast --disabled-password --gecos "" azuracast \
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/azuracast.conf /etc/nginx/conf.d/azuracast.conf
 
+RUN rm -f /etc/nginx/conf.d/default.conf
+
 # Generate the dhparam.pem file (takes a long time)
 RUN openssl dhparam -dsaparam -out /etc/nginx/dhparam.pem 4096
-
-# Install LetsEncrypt's certbot
-RUN add-apt-repository ppa:certbot/certbot \
-    && apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends certbot 
 
 # Set certbot permissions
 RUN mkdir -p /var/www/letsencrypt /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt \
@@ -45,8 +49,8 @@ RUN mkdir -p /var/www/letsencrypt /var/lib/letsencrypt /etc/letsencrypt /var/log
 RUN mkdir -p /run/php
 RUN touch /run/php/php7.2-fpm.pid
 
-COPY ./php/php.ini.tmpl /etc/php/7.2/fpm/05-azuracast.ini.tmpl
-COPY ./php/phpfpmpool.conf /etc/php/7.2/fpm/pool.d/www.conf
+COPY ./php/php.ini.tmpl /etc/php7/05-azuracast.ini.tmpl
+COPY ./php/phpfpmpool.conf /etc/php7/php-fpm.d/www.conf
 
 # Install MaxMind GeoIP Lite
 RUN wget http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz \
@@ -56,9 +60,21 @@ RUN wget http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz
 
 # Install Dockerize
 ENV DOCKERIZE_VERSION="v0.6.1"
-RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-    && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
-    && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && tar -C /usr/local/bin -xzvf dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+    && rm dockerize-alpine-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+
+# Install Jobber
+COPY --from=jobber /usr/local/libexec/jobbermaster /usr/local/bin/jobbermaster
+COPY --from=jobber /usr/local/libexec/jobberrunner /usr/local/bin/jobberrunner
+COPY --from=jobber /usr/local/bin/jobber /usr/local/bin/jobber
+
+COPY ./jobber.yml /var/azuracast/.jobber
+
+RUN chown azuracast:azuracast /var/azuracast/.jobber \
+    && chmod 644 /var/azuracast/.jobber \
+    && mkdir -p /var/jobber/1000 \
+    && chown -R azuracast:azuracast /var/jobber/1000 
 
 # Install composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
@@ -67,12 +83,10 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin -
 COPY scripts/ /usr/local/bin
 RUN chmod -R a+x /usr/local/bin
 
-# Set up first-run scripts and runit services
-COPY ./startup_scripts/ /etc/my_init.d/
-COPY ./runit/ /etc/service/
+# Set up running services
+COPY ./services/ /etc/system/
 
-RUN chmod +x /etc/service/*/run \
-    && chmod +x /etc/my_init.d/*
+RUN chmod +x /etc/system/*/run
 
 # Copy crontab
 COPY ./cron/ /etc/cron.d/
@@ -83,7 +97,7 @@ COPY ./cron/ /etc/cron.d/
 USER azuracast
 
 # Add global Composer deps
-RUN composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --no-dev \
+RUN composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --no-dev --keep-vcs \
     && mv /var/azuracast/new/vendor /var/azuracast/www \
     && rm -rf /var/azuracast/new
 
@@ -122,5 +136,7 @@ ENV APPLICATION_ENV="production" \
 ENTRYPOINT ["dockerize",\
     "-wait","tcp://mariadb:3306",\
     "-wait","tcp://influxdb:8086",\
+    "-template","/etc/php7/05-azuracast.ini.tmpl:/etc/php7/conf.d/05-azuracast.ini",\
     "-timeout","20s"]
-CMD ["/sbin/my_init"]
+
+CMD ["s6-svscan", "/etc/system"]

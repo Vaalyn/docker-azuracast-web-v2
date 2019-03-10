@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/usr/sbin/php-fpm7 -F --fpm-config /etc/php7/php-fpm.d/www.conf -c /etc/php7/
