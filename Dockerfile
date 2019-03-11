@@ -1,3 +1,6 @@
+#
+# Jobber build image
+#
 FROM golang:alpine AS jobber
 
 RUN apk add --no-cache rsync git alpine-sdk
@@ -14,9 +17,21 @@ RUN mkdir -p src/github.com/dshearer \
     && make check \
     && make install
 
+#
+# Main image
+#
 FROM alpine:3.9
 
-RUN apk add --no-cache ca-certificates s6 curl wget tar sudo zip unzip git rsync tzdata bash \
+ENV S6_KEEP_ENV=1
+
+COPY ./rootfs/ /
+
+# Set up S6 Overlay
+RUN apk add --no-cache curl \
+    && curl -L -s https://github.com/just-containers/s6-overlay/releases/download/v1.22.0.0/s6-overlay-amd64.tar.gz \
+       | tar xvzf - -C /
+
+RUN apk add --no-cache ca-certificates wget tar sudo zip unzip git rsync tzdata bash \
     nginx openssl certbot \
     php7 php7-fpm php7-cli \
     php7-phar php7-tokenizer php7-iconv php7-dom php7-curl \
@@ -84,12 +99,8 @@ COPY scripts/ /usr/local/bin
 RUN chmod -R a+x /usr/local/bin
 
 # Set up running services
-COPY ./services/ /etc/system/
-
-RUN chmod +x /etc/system/*/run
-
-# Copy crontab
-COPY ./cron/ /etc/cron.d/
+RUN chmod +x /etc/services.d/*/run \
+    && chmod +x /etc/cont-*/*.sh
 
 #
 # START Operations as `azuracast` user
@@ -136,7 +147,6 @@ ENV APPLICATION_ENV="production" \
 ENTRYPOINT ["dockerize",\
     "-wait","tcp://mariadb:3306",\
     "-wait","tcp://influxdb:8086",\
-    "-template","/etc/php7/05-azuracast.ini.tmpl:/etc/php7/conf.d/05-azuracast.ini",\
     "-timeout","20s"]
 
-CMD ["s6-svscan", "/etc/system"]
+CMD ["/init", "nginx"]
