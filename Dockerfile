@@ -33,11 +33,11 @@ RUN apk add --no-cache curl \
 
 RUN apk add --no-cache ca-certificates wget tar sudo zip unzip git rsync tzdata bash \
     nginx openssl certbot \
-    php7 php7-fpm php7-cli \
+    php7 php7-fpm php7-cli php7-opcache \
     php7-phar php7-tokenizer php7-iconv php7-dom php7-curl \
     php7-mbstring php7-openssl php7-fileinfo php7-gd php7-intl \
     php7-simplexml php7-xml php7-xmlreader php7-xmlwriter php7-json php7-redis php7-pdo \
-    php7-pdo_mysql php7-mysqlnd
+    php7-pdo_mysql php7-mysqlnd php7-zip
 
 # Create azuracast user.
 RUN adduser -h /var/azuracast -D -g "" azuracast \
