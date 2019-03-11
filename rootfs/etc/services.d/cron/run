@@ -1,3 +1,0 @@
-#!/usr/bin/env sh
-
-sudo -E -u azuracast jobberrunner -p 9004 /var/azuracast/.jobber
