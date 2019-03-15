@@ -8,4 +8,7 @@ memory_limit={{ default .Env.PHP_MEMORY_LIMIT "128M" }}
 [opcache]
 opcache.enable=1
 opcache.enable_cli=1
+
+{{if eq .Env.APPLICATION_ENV "production"}}
 opcache.revalidate_freq={{ default .Env.PHP_OPCACHE_REVALIDATE_FREQUENCY "60" }}
+{{end}}
