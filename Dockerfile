@@ -2,10 +2,9 @@ FROM phusion/baseimage:0.11
 
 # Set time zone
 ENV TZ="UTC"
-RUN echo $TZ > /etc/timezone
-
-# Avoid ERROR: invoke-rc.d: policy-rc.d denied execution of start.
-RUN sed -i "s/^exit 101$/exit 0/" /usr/sbin/policy-rc.d
+RUN echo $TZ > /etc/timezone \
+    # Avoid ERROR: invoke-rc.d: policy-rc.d denied execution of start.
+    && sed -i "s/^exit 101$/exit 0/" /usr/sbin/policy-rc.d
 
 # Install essential packages
 RUN apt-get update && \
@@ -14,7 +13,12 @@ RUN apt-get update && \
         nginx nginx-common nginx-extras \
         php7.2-fpm php7.2-cli php7.2-gd \
         php7.2-curl php7.2-xml php7.2-zip php7.2-bcmath \
-        php7.2-mysqlnd php7.2-mbstring php7.2-intl php7.2-redis
+        php7.2-mysqlnd php7.2-mbstring php7.2-intl php7.2-redis \
+    && add-apt-repository -y ppa:certbot/certbot \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends \
+        certbot \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create azuracast user.
 RUN adduser --home /var/azuracast --disabled-password --gecos "" azuracast \
@@ -32,11 +36,6 @@ COPY ./nginx/azuracast.conf /etc/nginx/conf.d/azuracast.conf
 # Generate the dhparam.pem file (takes a long time)
 RUN openssl dhparam -dsaparam -out /etc/nginx/dhparam.pem 4096
 
-# Install LetsEncrypt's certbot
-RUN add-apt-repository ppa:certbot/certbot \
-    && apt-get update \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends certbot 
-
 # Set certbot permissions
 RUN mkdir -p /var/www/letsencrypt /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt \
     && chown -R azuracast:azuracast /var/www/letsencrypt /var/lib/letsencrypt /etc/letsencrypt /var/log/letsencrypt
@@ -49,14 +48,14 @@ COPY ./php/php.ini.tmpl /etc/php/7.2/fpm/05-azuracast.ini.tmpl
 COPY ./php/phpfpmpool.conf /etc/php/7.2/fpm/pool.d/www.conf
 
 # Install MaxMind GeoIP Lite
-RUN wget http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz \
+RUN wget --quiet http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz \
     && tar -C /var/azuracast/geoip -xzvf GeoLite2-City.tar.gz --strip-components 1 \
     && rm GeoLite2-City.tar.gz \
     && chown -R azuracast:azuracast /var/azuracast/geoip
 
 # Install Dockerize
 ENV DOCKERIZE_VERSION="v0.6.1"
-RUN wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
+RUN wget --quiet https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz \
     && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
 
