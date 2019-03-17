@@ -117,7 +117,9 @@ ENV APPLICATION_ENV="production" \
     MYSQL_PORT=3306 \
     MYSQL_USER="azuracast" \
     MYSQL_PASSWORD="azur4c457" \
-    MYSQL_DATABASE="azuracast"
+    MYSQL_DATABASE="azuracast" \ 
+    PREFER_RELEASE_BUILDS="false" \
+    COMPOSER_PLUGIN_MODE="false"
 
 # Entrypoint and default command
 ENTRYPOINT ["dockerize",\
