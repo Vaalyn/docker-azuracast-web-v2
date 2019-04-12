@@ -125,5 +125,5 @@ ENV APPLICATION_ENV="production" \
 ENTRYPOINT ["dockerize",\
     "-wait","tcp://mariadb:3306",\
     "-wait","tcp://influxdb:8086",\
-    "-timeout","20s"]
+    "-timeout","40s"]
 CMD ["/sbin/my_init"]
