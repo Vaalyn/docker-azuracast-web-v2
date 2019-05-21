@@ -10,21 +10,24 @@ RUN echo $TZ > /etc/timezone \
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends apt-transport-https \
         ca-certificates curl wget tar software-properties-common sudo zip unzip git rsync tzdata \
+        tmpreaper mariadb-client \
         nginx nginx-common nginx-extras \
         php7.2-fpm php7.2-cli php7.2-gd \
         php7.2-curl php7.2-xml php7.2-zip php7.2-bcmath \
         php7.2-mysqlnd php7.2-mbstring php7.2-intl php7.2-redis \
+    && wget -qO- https://repos.influxdata.com/influxdb.key | apt-key add - \
+    && echo "deb https://repos.influxdata.com/ubuntu bionic stable" | tee /etc/apt/sources.list.d/influxdb.list \
     && add-apt-repository -y ppa:certbot/certbot \
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends \
-        certbot \
+        certbot influxdb \
     && rm -rf /var/lib/apt/lists/*
 
 # Create azuracast user.
 RUN adduser --home /var/azuracast --disabled-password --gecos "" azuracast \
     && usermod -aG docker_env azuracast \
     && usermod -aG www-data azuracast \
-    && mkdir -p /var/azuracast/www /var/azuracast/www_tmp /var/azuracast/geoip \
+    && mkdir -p /var/azuracast/www /var/azuracast/backups /var/azuracast/www_tmp /var/azuracast/geoip \
     && chown -R azuracast:azuracast /var/azuracast \
     && chmod -R 777 /var/azuracast/www_tmp \
     && echo 'azuracast ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
@@ -84,7 +87,7 @@ RUN chmod -R 600 /etc/cron.d/*
 USER azuracast
 
 # Add global Composer deps
-RUN composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --no-dev \
+RUN composer create-project azuracast/azuracast /var/azuracast/new ^0.9.5 --no-dev \
     && mv /var/azuracast/new/vendor /var/azuracast/www \
     && rm -rf /var/azuracast/new
 

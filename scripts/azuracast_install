@@ -16,11 +16,17 @@ fi
 update_mode=0
 release_update=0
 composer_plugin_mode=0
+backup_restore_mode=0
+
 original_args=$*
 
 while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do case $1 in
   --update )
     update_mode=1
+    ;;
+
+  --restore )
+    backup_restore_mode=1
     ;;
 
   -r | --release )
@@ -44,7 +50,7 @@ echo "(Environment: $APPLICATION_ENV)"
 
 if [ $APPLICATION_ENV = "production" ]; then
     if [ $release_update = 1 ]; then
-        composer create-project azuracast/azuracast /var/azuracast/new ^0.9.3 --prefer-dist --no-install
+        composer create-project azuracast/azuracast /var/azuracast/new ^0.9.5 --prefer-dist --no-install
     else
         composer create-project azuracast/azuracast /var/azuracast/new dev-master --prefer-source --keep-vcs --no-install
     fi
@@ -67,4 +73,8 @@ else
     composer install
 fi
 
-azuracast_cli azuracast:setup ${original_args}
+if bool "$backup_restore_mode"; then
+    azuracast_cli azuracast:restore ${original_args}
+else
+    azuracast_cli azuracast:setup ${original_args}
+fi
