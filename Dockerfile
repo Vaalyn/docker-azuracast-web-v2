@@ -103,11 +103,9 @@ RUN openssl req -new -nodes -x509 -subj "/C=US/ST=Texas/L=Austin/O=IT/CN=localho
 RUN ln -s /etc/letsencrypt/selfsigned.key /etc/letsencrypt/ssl.key \
     && ln -s /etc/letsencrypt/selfsigned.crt /etc/letsencrypt/ssl.crt
 
-VOLUME /etc/letsencrypt
-
 # Clone repo and set up AzuraCast repo
 WORKDIR /var/azuracast/www
-VOLUME /var/azuracast/www
+VOLUME ["/var/azuracast/www", "/var/azuracast/backups", "/etc/letsencrypt"]
 
 #
 # END Operations as `azuracast` user
