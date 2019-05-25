@@ -2,7 +2,7 @@
 
 # Duplicate php-worker runit script based on environment variable
 
-echo "Adding $ADDITIONAL_MEDIA_SYNC_WORKER_COUNT additional workers"
+echo "Adding ${ADDITIONAL_MEDIA_SYNC_WORKER_COUNT:=0} additional workers"
 
 for ((WORKER_NUMBER=1; WORKER_NUMBER<=$ADDITIONAL_MEDIA_SYNC_WORKER_COUNT; WORKER_NUMBER++)); do
     echo "Adding worker $WORKER_NUMBER..."
