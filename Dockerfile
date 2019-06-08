@@ -36,6 +36,10 @@ RUN adduser --home /var/azuracast --disabled-password --gecos "" azuracast \
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/azuracast.conf /etc/nginx/conf.d/azuracast.conf
 
+# Create nginx temp dirs
+RUN mkdir -p /tmp/azuracast_nginx_client /tmp/azuracast_fastcgi_temp \
+    && chmod -R 777 /tmp/azuracast_*
+
 # Generate the dhparam.pem file (takes a long time)
 RUN openssl dhparam -dsaparam -out /etc/nginx/dhparam.pem 4096
 
