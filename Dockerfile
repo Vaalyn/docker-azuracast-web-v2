@@ -38,6 +38,8 @@ COPY ./nginx/azuracast.conf /etc/nginx/conf.d/azuracast.conf
 
 # Create nginx temp dirs
 RUN mkdir -p /tmp/azuracast_nginx_client /tmp/azuracast_fastcgi_temp \
+    && touch /tmp/azuracast_nginx_client/.tmpreaper \
+    && touch /tmp/azuracast_fastcgi_temp/.tmpreaper \
     && chmod -R 777 /tmp/azuracast_*
 
 # Generate the dhparam.pem file (takes a long time)
